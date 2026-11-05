@@ -1,0 +1,5 @@
+(library
+ (name praxo_core)
+ (public_name praxo-core)
+ (wrapped false)
+ (modules praxo))
