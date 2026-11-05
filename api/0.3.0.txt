@@ -1,4 +1,4 @@
-# PRAXO-CORE OCaml Core API 0.2.0
+# PRAXO-CORE OCaml Core API 0.3.0
 # SPEC_VERSION 0.2.0
 
 type json =

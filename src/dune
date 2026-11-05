@@ -2,4 +2,4 @@
  (name praxo_core)
  (public_name praxo-core)
  (wrapped false)
- (modules praxo))
+ (modules praxo_core))

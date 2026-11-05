@@ -5,10 +5,13 @@ cross-language sources live in
 [axisvela/praxo-core](https://github.com/axisvela/praxo-core).
 
 - `SPEC_VERSION`: `0.2.0`
-- Core version: `0.2.0`
+- Core version: `0.3.0`
 - opam package: `praxo-core`
-- Module: `Praxo`
+- Module: `Praxo_core`
 - License: MIT
+
+OCaml module identifiers cannot contain `-`; `Praxo-Core` is the package name,
+and the importable module is `Praxo_core`.
 
 ## Install
 
@@ -19,11 +22,11 @@ opam install praxo-core
 ## API
 
 ```ocaml
-let node = Praxo.parse_json "{\"name\":\"echo\",\"input\":{\"text\":\"hi\"}}"
-let raw = Praxo.encode_json node
-let _call = Praxo.parse_tool_call raw
-let _paths = Praxo.validate_schema (Praxo.parse_json "{\"type\":\"string\"}") node
-let _manifest = Praxo.validate_manifest "{}"
+let node = Praxo_core.parse_json "{\"name\":\"echo\",\"input\":{\"text\":\"hi\"}}"
+let raw = Praxo_core.encode_json node
+let _call = Praxo_core.parse_tool_call raw
+let _paths = Praxo_core.validate_schema (Praxo_core.parse_json "{\"type\":\"string\"}") node
+let _manifest = Praxo_core.validate_manifest "{}"
 ```
 
 ## Scope
