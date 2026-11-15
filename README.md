@@ -1,7 +1,7 @@
 # PRAXO-CORE for OCaml
 
 PRAXO-CORE is an embeddable, MIT-licensed agent framework. This package is its
-native OCaml Core with source tag `ocaml/v0.6.0`. It passes all eleven vector
+native OCaml Core with source tag `ocaml/v0.7.0`. It passes all eleven vector
 groups on OCaml 4.14.2 bytecode and includes the native agent loop, memory store,
 checkpoint allowlist, lexical path policy, context compaction, event sinks,
 middleware helpers, tool selection, and non-streaming OpenAI-compatible,
@@ -25,8 +25,10 @@ date are not claimed.
 
 - Registry introduction: [REGISTRY.md](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/REGISTRY.md)
 - Machine-readable entry: [llms.txt](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/llms.txt) and [llms.md](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/llms.md)
+- [Examples](https://github.com/axisvela/praxo-core/tree/main/language/ocaml/examples): runnable language-specific examples.
 - Coding-agent contract: [docs/getting-started/coding-agents.md](https://github.com/axisvela/praxo-core/blob/main/docs/getting-started/coding-agents.md)
 - Registry: [opam (pending)](https://github.com/axisvela/praxo-core-ocaml)
+- Community: [X](https://x.com/axisvela) · [Weibo](https://weibo.com/u/1936025761)
 
 ## Install
 
@@ -68,7 +70,7 @@ let _paths = Praxo_core.validate_schema (Praxo_core.parse_json "{\"type\":\"stri
 let _manifest = Praxo_core.validate_manifest "{}"
 ```
 
-Public declarations are inventoried in [`api/0.6.0.txt`](api/0.6.0.txt).
+Public declarations are inventoried in [`api/0.7.0.txt`](api/0.7.0.txt).
 `validate_manifest` returns `Some manifest` only for a valid declaration.
 
 ## OpenAI-Compatible Adapter
