@@ -1,7 +1,12 @@
+(executable
+ (name process_plugin)
+ (modules process_plugin)
+ (libraries praxo-core unix))
+
 (test
  (name praxo_tests)
  (modes byte)
  (modules praxo_tests praxo_adapter_tests)
  (libraries praxo-core unix)
  (deps (source_tree spec) (source_tree tests))
- (action (run %{test} spec)))
+ (action (run %{test} spec %{exe:process_plugin.exe})))

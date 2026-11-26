@@ -1,4 +1,4 @@
-# PRAXO-CORE OCaml 0.11.0
+# PRAXO-CORE OCaml 0.11.1
 
 PRAXO-CORE is an embeddable, MIT-licensed AI agent framework. This standalone
 source package is its native OCaml Core, published as `praxo-core`.
@@ -20,8 +20,8 @@ not certify the packaged bytes.
 
 Requires OCaml >= 4.14 and Dune >= 3.0. Tests run in bytecode mode. The `unix`
 library ships with OCaml and is not a separate opam dependency. Tests are
-offline and also require Python 3 (`python` on PATH, or set `PYTHON` to its
-executable).
+offline and use a native OCaml process-plugin fixture; no Python runtime is
+required.
 
 ```sh
 dune build -p praxo-core
@@ -39,9 +39,8 @@ Use `(libraries praxo-core)` in a consumer's Dune library or executable. The
 module is `Praxo_core` (the library is unwrapped). Callers supply provider HTTP
 transports; no network client or credentials are bundled.
 
-The packaged tests include both canonical test modules and all shared vectors
-under `tests/spec/vectors`. `tests/tests/fixtures` preserves the fixture path
-used by the unmodified tests when run from the Dune sandbox.
+The packaged tests include both canonical test modules, a native OCaml
+process-plugin fixture, and all shared vectors under `tests/spec/vectors`.
 
 ## What Is Included
 
@@ -65,7 +64,7 @@ let _paths = Praxo_core.validate_schema (Praxo_core.parse_json "{\"type\":\"stri
 let _manifest = Praxo_core.validate_manifest "{}"
 ```
 
-Public declarations are inventoried in the [API snapshot](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/api/0.11.0.txt).
+Public declarations are inventoried in the [API snapshot](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/api/0.11.1.txt).
 `validate_manifest` returns `Some manifest` only for a valid declaration.
 
 ## Human-in-the-loop Approval
@@ -166,7 +165,7 @@ Scenario tutorials:
 - [Documentation](https://axisvela.github.io/praxo-core/languages/ocaml/)
 - [Canonical source](https://github.com/axisvela/praxo-core/tree/main/language/ocaml)
 - [API interface](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/src/praxo_core.mli)
-- [API snapshot](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/api/0.11.0.txt)
+- [API snapshot](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/api/0.11.1.txt)
 - [Coding agents](https://axisvela.github.io/praxo-core/getting-started/coding-agents/)
 - [Release notes](https://github.com/axisvela/praxo-core/blob/main/language/ocaml/CHANGELOG.md)
 - [Security](https://github.com/axisvela/praxo-core/blob/main/SECURITY.md)

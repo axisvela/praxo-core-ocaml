@@ -1,16 +1,16 @@
 {
   "canonical_repository": "https://github.com/axisvela/praxo-core",
-  "canonical_tag_commit": "04e207dc9087f849113e5e62836aab8e46eee1cd",
-  "canonical_tag_reference": "ocaml/v0.11.0",
+  "canonical_tag_commit": "383fa185e5dfa266848bd5dbdab0e78cf5026f3d",
+  "canonical_tag_reference": "ocaml/v0.11.1",
   "generator": "scripts/build_ocaml_package.py",
   "git_object_format": "sha1",
-  "head_commit": "dc4b5ea13a167ce2979176716eae26463ae05e1b",
+  "head_commit": "383fa185e5dfa266848bd5dbdab0e78cf5026f3d",
   "identity_note": "Tag and HEAD are references only; worktree_sha256 identifies each actual input, not tagged content.",
   "inputs": {
     "language/ocaml/CHANGELOG.md": {
-      "head_blob_oid": "99faa0be1eae8cbaa33e94916b78ff09e7b8c548",
+      "head_blob_oid": "4bc96b7a7d6afda99f6f11b632ba04e900b8a95b",
       "matches_head": false,
-      "worktree_sha256": "1dfa08ea81c98971b110892961b5dd651c4e15fa84a445363b632a31daf05cef"
+      "worktree_sha256": "48a8791175f63c033daa2f566b537fe2e4611f70819eb1b3f57851dc56cc4efa"
     },
     "language/ocaml/LICENSE": {
       "head_blob_oid": "0282b364b0c4a7afc40b1e425660360f0fc7786c",
@@ -18,14 +18,14 @@
       "worktree_sha256": "59324f426bcbfe5c8952892695c43510d757b598143b62d615165291265b48d1"
     },
     "language/ocaml/VERSION": {
-      "head_blob_oid": "d9df1bbc0c7befdbc28d61efc28ed3e5c08d015f",
+      "head_blob_oid": "af88ba824866fdf61bd6e3c8f83203f5d93d062b",
       "matches_head": true,
-      "worktree_sha256": "795d6bc79574d2aec03ad9cfec404bb95083c9dd210e6521e0d4199772d28d44"
+      "worktree_sha256": "fe8b23410c0d9003e70c141ca726f3c669bbc0bf7e3acb7ba35f23cf7260332b"
     },
-    "language/ocaml/api/0.11.0.txt": {
-      "head_blob_oid": "7945184626ce4e971846ad5e64d55d716d7d11d6",
+    "language/ocaml/api/0.11.1.txt": {
+      "head_blob_oid": "2373d69b3aaf4b014be772b70c3f3c1168f1d178",
       "matches_head": true,
-      "worktree_sha256": "2893bef38895aabf9410fc59fab6173d416d5bbcc8ec5571d1ed6fb31bfc6101"
+      "worktree_sha256": "bad3f62b059ee23d1fcbf86e613e7073da8c892365c0f68d6ee0d741d7415da7"
     },
     "language/ocaml/src/praxo_agent.ml": {
       "head_blob_oid": "c08cbf61b1813275cc22c0da7479fa9975aff965",
@@ -108,34 +108,34 @@
       "worktree_sha256": "36ff73d1a15ceadcddbbe83abb961127088de52ab6ff94b5833554bb8b8ad37a"
     },
     "language/ocaml/src/praxo_types.ml": {
-      "head_blob_oid": "e11b523550e6329088a2ed286d18dbf094859b70",
+      "head_blob_oid": "c74190d58213fb80b9ce206010d9fcf1932f4f22",
       "matches_head": true,
-      "worktree_sha256": "aeb73214f85ff571f3e32b7af15cd6f2a05eff2db3cfdb5206d5bcf252ed0c2d"
-    },
-    "language/ocaml/tests/fixtures/process_plugin.py": {
-      "head_blob_oid": "0fee778a9309b03243a2c7bd7aaaac834a3511f8",
-      "matches_head": false,
-      "worktree_sha256": "c962a5f16f529e828fc854ed23feb3bf7f2190913a58cc076911eaae6bc90c33"
+      "worktree_sha256": "49340c50a4982e5172c0bfcea1cd9068b21602d9bc70063620c354a1fed71c5d"
     },
     "language/ocaml/tests/praxo_adapter_tests.ml": {
-      "head_blob_oid": "3e26d81f474ddb373327b03e10450e0dfc3f7b0f",
+      "head_blob_oid": "fd44378f83f725526568a6928f29368c05fe0151",
       "matches_head": false,
-      "worktree_sha256": "b6fc1ea8fbc132d4108ee9bd809d78a1c1a801048d0fe1ca5d69a047e5b4b29c"
+      "worktree_sha256": "b368994292f8a12a86cf1b4b2d606de94c4745d75f7cb924a5bb64d7a95d8cf2"
     },
     "language/ocaml/tests/praxo_tests.ml": {
-      "head_blob_oid": "ba5c247f55f4db20968d754fc4657bb9e231a344",
+      "head_blob_oid": "c192cc4154d395e52c1e83d3d62e52dfbe31bfa4",
       "matches_head": true,
-      "worktree_sha256": "76bdfbd4ee45535bdc396f5d235df5a8d0c6efc8645ef0ccf5f386ea81ddb219"
+      "worktree_sha256": "d69e182ff7e41cd0a9170ae0272c752a35ec3a662717724aac3ff05ddc1214c1"
+    },
+    "language/ocaml/tests/process_plugin.ml": {
+      "head_blob_oid": "baf7fc05f582d2d42d3700845d8eccf467ec0a51",
+      "matches_head": true,
+      "worktree_sha256": "caac02854b4e180f0719a6c39839b6ce032d56a5a1c0d7d13dbfe9a5bff566f0"
     },
     "scripts/build_ocaml_package.py": {
-      "head_blob_oid": "e8590e2a064201f84838a61f7efd835cbb40f078",
+      "head_blob_oid": "c58b4abfab353ce74c685a7869c89020fcf913be",
       "matches_head": true,
-      "worktree_sha256": "73a65746697c9ef00a26500a8061aa9a0e10e50fbc802978deb6a92697b72581"
+      "worktree_sha256": "e009c1c585600c40ab782c53aaa4d28b0e02d0910059c20b4965b402fdc079d8"
     },
     "scripts/ocaml_package_readme.md": {
-      "head_blob_oid": "0bb014fceea33130d9b508261f3181604dad9a04",
+      "head_blob_oid": "9e39e182ea5ec8b8d00aad78448a771d774f469e",
       "matches_head": true,
-      "worktree_sha256": "81871f7a5e8fe6c9124af49e090f3d31c9077d91e703e3dd38f89f46e5e9b6f2"
+      "worktree_sha256": "3efbd124fc1938ab41595f281412c9d4ac88cd58c0286167879d5224c830e67f"
     },
     "spec/vectors/README.md": {
       "head_blob_oid": "173cbaf31b9c18482944131236cb609df38d8c7f",
@@ -198,5 +198,5 @@
       "worktree_sha256": "3c9553cc03292dd60b74e7666ed6a3bdc245a0668a55090d7d030b34d857400f"
     }
   },
-  "version": "0.11.0"
+  "version": "0.11.1"
 }

@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "praxo-core"
-version: "0.11.0"
+version: "0.11.1"
 synopsis: "Embeddable native OCaml AI agent framework"
 description: """
 MIT-licensed native OCaml Core with agent execution, tools, memory,
@@ -16,7 +16,6 @@ dev-repo: "git+https://github.com/axisvela/praxo-core-ocaml.git"
 depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.0"}
-  "conf-python-3" {with-test}
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]

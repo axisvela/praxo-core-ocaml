@@ -1,4 +1,4 @@
 (lang dune 3.0)
 (name praxo_core)
-(version 0.11.0)
+(version 0.11.1)
 (generate_opam_files false)
