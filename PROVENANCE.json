@@ -4,7 +4,7 @@
   "canonical_tag_reference": "ocaml/v0.11.0",
   "generator": "scripts/build_ocaml_package.py",
   "git_object_format": "sha1",
-  "head_commit": "04e207dc9087f849113e5e62836aab8e46eee1cd",
+  "head_commit": "dc4b5ea13a167ce2979176716eae26463ae05e1b",
   "identity_note": "Tag and HEAD are references only; worktree_sha256 identifies each actual input, not tagged content.",
   "inputs": {
     "language/ocaml/CHANGELOG.md": {
@@ -128,9 +128,14 @@
       "worktree_sha256": "76bdfbd4ee45535bdc396f5d235df5a8d0c6efc8645ef0ccf5f386ea81ddb219"
     },
     "scripts/build_ocaml_package.py": {
-      "head_blob_oid": "1eb76357e660d674293f0cbb12d24e04107fa263",
+      "head_blob_oid": "e8590e2a064201f84838a61f7efd835cbb40f078",
       "matches_head": true,
-      "worktree_sha256": "9f6d241d8c48fdf5a3469016a62018840144347ad6f16754a8edc96a56d4451c"
+      "worktree_sha256": "73a65746697c9ef00a26500a8061aa9a0e10e50fbc802978deb6a92697b72581"
+    },
+    "scripts/ocaml_package_readme.md": {
+      "head_blob_oid": "0bb014fceea33130d9b508261f3181604dad9a04",
+      "matches_head": true,
+      "worktree_sha256": "81871f7a5e8fe6c9124af49e090f3d31c9077d91e703e3dd38f89f46e5e9b6f2"
     },
     "spec/vectors/README.md": {
       "head_blob_oid": "173cbaf31b9c18482944131236cb609df38d8c7f",
