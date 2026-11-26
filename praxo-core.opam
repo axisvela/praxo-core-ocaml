@@ -1,21 +1,24 @@
 opam-version: "2.0"
-synopsis: "Embeddable MIT-licensed agent framework for OCaml"
+name: "praxo-core"
+version: "0.11.0"
+synopsis: "Embeddable native OCaml AI agent framework"
 description: """
-Native OCaml Core for PRAXO-CORE: JSON, tool calls, JSON Schema subset,
-plugin manifests, policy hooks, memory, checkpoints, context compaction,
-middleware, events, and an agent loop. No Go runtime or provider adapter is
-required.
+MIT-licensed native OCaml Core with agent execution, tools, memory,
+checkpoints and provider transport seams. No bundled HTTP client.
 """
-maintainer: "AxisVela <releases@axisvela.com>"
-authors: "AxisVela"
+maintainer: "hanhuiwen <hanhuiwen@axisvela.com>"
+authors: ["PRAXO-CORE contributors"]
 license: "MIT"
-homepage: "https://axisvela.github.io/praxo-core/"
-bug-reports: "https://github.com/axisvela/praxo-core-ocaml/issues"
+homepage: "https://axisvela.github.io/praxo-core/languages/ocaml/"
+doc: "https://axisvela.github.io/praxo-core/languages/ocaml/"
+bug-reports: "https://github.com/axisvela/praxo-core/issues"
 dev-repo: "git+https://github.com/axisvela/praxo-core-ocaml.git"
-build: [
-  ["dune" "build" "-p" name "-j" jobs]
-]
 depends: [
   "ocaml" {>= "4.14"}
   "dune" {>= "3.0"}
+  "conf-python-3" {with-test}
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]

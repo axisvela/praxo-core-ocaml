@@ -1,0 +1,197 @@
+{
+  "canonical_repository": "https://github.com/axisvela/praxo-core",
+  "canonical_tag_commit": "04e207dc9087f849113e5e62836aab8e46eee1cd",
+  "canonical_tag_reference": "ocaml/v0.11.0",
+  "generator": "scripts/build_ocaml_package.py",
+  "git_object_format": "sha1",
+  "head_commit": "04e207dc9087f849113e5e62836aab8e46eee1cd",
+  "identity_note": "Tag and HEAD are references only; worktree_sha256 identifies each actual input, not tagged content.",
+  "inputs": {
+    "language/ocaml/CHANGELOG.md": {
+      "head_blob_oid": "99faa0be1eae8cbaa33e94916b78ff09e7b8c548",
+      "matches_head": false,
+      "worktree_sha256": "1dfa08ea81c98971b110892961b5dd651c4e15fa84a445363b632a31daf05cef"
+    },
+    "language/ocaml/LICENSE": {
+      "head_blob_oid": "0282b364b0c4a7afc40b1e425660360f0fc7786c",
+      "matches_head": true,
+      "worktree_sha256": "59324f426bcbfe5c8952892695c43510d757b598143b62d615165291265b48d1"
+    },
+    "language/ocaml/VERSION": {
+      "head_blob_oid": "d9df1bbc0c7befdbc28d61efc28ed3e5c08d015f",
+      "matches_head": true,
+      "worktree_sha256": "795d6bc79574d2aec03ad9cfec404bb95083c9dd210e6521e0d4199772d28d44"
+    },
+    "language/ocaml/api/0.11.0.txt": {
+      "head_blob_oid": "7945184626ce4e971846ad5e64d55d716d7d11d6",
+      "matches_head": true,
+      "worktree_sha256": "2893bef38895aabf9410fc59fab6173d416d5bbcc8ec5571d1ed6fb31bfc6101"
+    },
+    "language/ocaml/src/praxo_agent.ml": {
+      "head_blob_oid": "c08cbf61b1813275cc22c0da7479fa9975aff965",
+      "matches_head": true,
+      "worktree_sha256": "5a9f32ec7c6abfd396e3a4c99381dfb11f79e9502e97659a6f88726f182d59ac"
+    },
+    "language/ocaml/src/praxo_anthropic.ml": {
+      "head_blob_oid": "7541b8981ab3882becc397889e3d4601eff924f3",
+      "matches_head": true,
+      "worktree_sha256": "79ffdc79c462ee160e1580342a7b710c9a6f37983ed0fceffca91bd75996ee58"
+    },
+    "language/ocaml/src/praxo_core.ml": {
+      "head_blob_oid": "2589cd33acc8b00b0b631a2b107386d1f8a18ee1",
+      "matches_head": true,
+      "worktree_sha256": "013004e15a2383c3f0aa0db0342ff4d0fe39c78fc48dd7a2a25df48732cc23f3"
+    },
+    "language/ocaml/src/praxo_core.mli": {
+      "head_blob_oid": "51c510152ddff3c711879412293d680d7c1107d4",
+      "matches_head": true,
+      "worktree_sha256": "4cc3b9de97d43dd68d18e81921c9cab3e410bfb1e53ab308ce8f784532acda34"
+    },
+    "language/ocaml/src/praxo_gemini.ml": {
+      "head_blob_oid": "def1dbe58f3a6ca7347c25f17d395f84edacbd6f",
+      "matches_head": true,
+      "worktree_sha256": "b60c8c58a2f216268234cc714758681ec13e9c0ac7424c520aea4122df222a9e"
+    },
+    "language/ocaml/src/praxo_json.ml": {
+      "head_blob_oid": "14d4c528480c2a389fb7b2b9ab6d79a2714dc2c9",
+      "matches_head": true,
+      "worktree_sha256": "5b218c67bf47efa9690cb7fa502da1b7c8c16b087c8feeb762f9e5485905cdc1"
+    },
+    "language/ocaml/src/praxo_manifest.ml": {
+      "head_blob_oid": "778368171aec83218b9839f36a40b84660c9e4a2",
+      "matches_head": true,
+      "worktree_sha256": "b5347d942a83a5ef02279dd89884a7d7c51041d81850d903aa8e3cebfb4e2591"
+    },
+    "language/ocaml/src/praxo_message.ml": {
+      "head_blob_oid": "44254ae4f148f19e1b5350c309077569ba1aba76",
+      "matches_head": true,
+      "worktree_sha256": "9c296529b4d9bc260b61e57deecf8f9c934c975a83fd73852dbbb9bdfbcd032d"
+    },
+    "language/ocaml/src/praxo_middleware.ml": {
+      "head_blob_oid": "40242d4f327d01dc7796e6ef66488abe7726beb5",
+      "matches_head": true,
+      "worktree_sha256": "1a57884f755442bd1ef55fee94ba81557009833569c1b2c1dc24fa69add2a2d2"
+    },
+    "language/ocaml/src/praxo_openai.ml": {
+      "head_blob_oid": "50929a354771072ad800d51ffddff56de00df3ec",
+      "matches_head": true,
+      "worktree_sha256": "2bf4a2854bc5f1b19feba606034b4217cf7a78c3c4762f114972c326099b5092"
+    },
+    "language/ocaml/src/praxo_plugin.ml": {
+      "head_blob_oid": "f4cca5491848989af016f612ad6cb17ad952a169",
+      "matches_head": true,
+      "worktree_sha256": "00703a9447b326bcdf1d05b97132a916d6f1dbe349a7b8285b7443b76cb63fef"
+    },
+    "language/ocaml/src/praxo_provider_util.ml": {
+      "head_blob_oid": "9f605d7ef120befe577e3888738e70c5c675ec79",
+      "matches_head": true,
+      "worktree_sha256": "bbebfe5761046563e508c49d3896d62fa817f50a34a9f8ff7d89b7bc65d16a6d"
+    },
+    "language/ocaml/src/praxo_runtime.ml": {
+      "head_blob_oid": "e70c9c9e139553733ce97a9796f5351c138a9f4d",
+      "matches_head": true,
+      "worktree_sha256": "1757c56164d8d7154ef7fd4fca356b96b518e6cf99231a911517ad80c9cdd3f2"
+    },
+    "language/ocaml/src/praxo_schema.ml": {
+      "head_blob_oid": "d7925abdd1f3c2ee887c4f44869d509f9e653f34",
+      "matches_head": true,
+      "worktree_sha256": "6f0d2046975174d0a2a1ec213a148342129292559ee71d4491e6a0f8a0133c94"
+    },
+    "language/ocaml/src/praxo_seams.ml": {
+      "head_blob_oid": "45af2fccd90758e207cebbcd7eab3e0af5c5a4a9",
+      "matches_head": true,
+      "worktree_sha256": "0150a2306cf5aa50466e0a7c8bdca9536570be9322d477a6b61180eafdaa59e5"
+    },
+    "language/ocaml/src/praxo_toolcall.ml": {
+      "head_blob_oid": "ebf1136f5dccab7f45b23f59c1f65dd37919ec2c",
+      "matches_head": true,
+      "worktree_sha256": "36ff73d1a15ceadcddbbe83abb961127088de52ab6ff94b5833554bb8b8ad37a"
+    },
+    "language/ocaml/src/praxo_types.ml": {
+      "head_blob_oid": "e11b523550e6329088a2ed286d18dbf094859b70",
+      "matches_head": true,
+      "worktree_sha256": "aeb73214f85ff571f3e32b7af15cd6f2a05eff2db3cfdb5206d5bcf252ed0c2d"
+    },
+    "language/ocaml/tests/fixtures/process_plugin.py": {
+      "head_blob_oid": "0fee778a9309b03243a2c7bd7aaaac834a3511f8",
+      "matches_head": false,
+      "worktree_sha256": "c962a5f16f529e828fc854ed23feb3bf7f2190913a58cc076911eaae6bc90c33"
+    },
+    "language/ocaml/tests/praxo_adapter_tests.ml": {
+      "head_blob_oid": "3e26d81f474ddb373327b03e10450e0dfc3f7b0f",
+      "matches_head": false,
+      "worktree_sha256": "b6fc1ea8fbc132d4108ee9bd809d78a1c1a801048d0fe1ca5d69a047e5b4b29c"
+    },
+    "language/ocaml/tests/praxo_tests.ml": {
+      "head_blob_oid": "ba5c247f55f4db20968d754fc4657bb9e231a344",
+      "matches_head": true,
+      "worktree_sha256": "76bdfbd4ee45535bdc396f5d235df5a8d0c6efc8645ef0ccf5f386ea81ddb219"
+    },
+    "scripts/build_ocaml_package.py": {
+      "head_blob_oid": "1eb76357e660d674293f0cbb12d24e04107fa263",
+      "matches_head": true,
+      "worktree_sha256": "9f6d241d8c48fdf5a3469016a62018840144347ad6f16754a8edc96a56d4451c"
+    },
+    "spec/vectors/README.md": {
+      "head_blob_oid": "173cbaf31b9c18482944131236cb609df38d8c7f",
+      "matches_head": false,
+      "worktree_sha256": "06b33e272e6da7b7df054c47a4ad4ed0eb6dadfbe1cfbd79c966449bbb8f3755"
+    },
+    "spec/vectors/agent-loop.json": {
+      "head_blob_oid": "7a610ed5e5cd6b4acb434d534fccab6a73a799ec",
+      "matches_head": false,
+      "worktree_sha256": "e35d1cda15052d238e7b6c34ae6ca79db1869d69ebde01b534949a7b92aef9df"
+    },
+    "spec/vectors/checkpoint.json": {
+      "head_blob_oid": "50583f097c965e4506ad9bf9f5c2a95b8781ebae",
+      "matches_head": false,
+      "worktree_sha256": "8103976954e877081cb7f4eb1091c8cdf1bf8173aa306bb59cd217d61cbb3126"
+    },
+    "spec/vectors/context.json": {
+      "head_blob_oid": "3bd280cb66f788aef9d708b22a5941499346cbb8",
+      "matches_head": false,
+      "worktree_sha256": "0eafbc1b145cbc803447e7c012950cc033aaebb1e01147e2fea34661790d2236"
+    },
+    "spec/vectors/event.json": {
+      "head_blob_oid": "c0d7d9d85be86bc22a3be54dd5aa584bff1507bd",
+      "matches_head": false,
+      "worktree_sha256": "2e9101c33fe78bc79ec09dd26ec582875aa779c68d4bd92cc3d160eb6a4a59fb"
+    },
+    "spec/vectors/jsonschema.json": {
+      "head_blob_oid": "2b5d3079f386a883f656731168392c1944747343",
+      "matches_head": false,
+      "worktree_sha256": "9f522feca6a58d3cd26ba92f99c39cc1c18a6d6eec6513ef183e343eacaebb0b"
+    },
+    "spec/vectors/memory.json": {
+      "head_blob_oid": "79144e7fa241c4113083b2f396c1ec0f431d55a9",
+      "matches_head": false,
+      "worktree_sha256": "3894c067272d80f4735549d12ae0c9eaac03cec8d364bf92ca6da831419f8599"
+    },
+    "spec/vectors/middleware.json": {
+      "head_blob_oid": "7bf64f7c40831bd51a863b17b38788b3bf7d74b2",
+      "matches_head": false,
+      "worktree_sha256": "fb3927ebe7a51a3759bed62d4b82a8de4776601aea697c9bb7f9163cc98e4186"
+    },
+    "spec/vectors/plugin.json": {
+      "head_blob_oid": "f106692f28134b14a0eeca53a0e17398bdf048f2",
+      "matches_head": false,
+      "worktree_sha256": "428068659606d31eaaa6e6729d98473553da3c41f1e8a6a35609eec36b7b5011"
+    },
+    "spec/vectors/policy.json": {
+      "head_blob_oid": "afcf7f15023ffe7361efe6212db06413d1f8dd50",
+      "matches_head": false,
+      "worktree_sha256": "7cbfc3dfc38261a26dbe994af22414a67567091e41ecb07c045496f86fe7f3e2"
+    },
+    "spec/vectors/stream.json": {
+      "head_blob_oid": "3fd554ff8d80f9b994e2c24b0c57a9706155119c",
+      "matches_head": false,
+      "worktree_sha256": "df69f7c736267fc8168658c8cf93509d93dc650aa74986c963585a3eedeaff1a"
+    },
+    "spec/vectors/toolcall.json": {
+      "head_blob_oid": "a2abfc18fa254e4e8271935da3b723fcc0e4c779",
+      "matches_head": false,
+      "worktree_sha256": "3c9553cc03292dd60b74e7666ed6a3bdc245a0668a55090d7d030b34d857400f"
+    }
+  },
+  "version": "0.11.0"
+}

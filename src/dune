@@ -2,4 +2,6 @@
  (name praxo_core)
  (public_name praxo-core)
  (wrapped false)
- (modules praxo_core))
+ (modules praxo_core praxo_types praxo_json praxo_toolcall praxo_schema praxo_manifest praxo_message praxo_provider_util praxo_openai praxo_anthropic praxo_gemini praxo_plugin praxo_runtime praxo_middleware praxo_agent praxo_seams)
+ (private_modules praxo_types praxo_json praxo_toolcall praxo_schema praxo_manifest praxo_message praxo_provider_util praxo_openai praxo_anthropic praxo_gemini praxo_plugin praxo_runtime praxo_middleware praxo_agent praxo_seams)
+ (libraries unix))

@@ -1,0 +1,912 @@
+let read_file path =
+  let channel = open_in_bin path in
+  Fun.protect
+    ~finally:(fun () -> close_in channel)
+    (fun () -> really_input_string channel (in_channel_length channel))
+
+let fail message = raise (Failure message)
+
+let check condition message = if not condition then fail message
+
+let field name = function
+  | Praxo_core.Object fields ->
+      let rec last = function
+        | [] -> None
+        | (key, value) :: rest ->
+            begin match last rest with
+            | Some _ as found -> found
+            | None -> if key = name then Some value else None
+            end
+      in
+      last fields
+  | _ -> None
+
+let string_field name value =
+  match field name value with Some (Praxo_core.String text) -> text | _ -> fail ("missing string " ^ name)
+
+let bool_field name value =
+  match field name value with Some (Praxo_core.Bool flag) -> flag | _ -> fail ("missing bool " ^ name)
+
+let array_field name value =
+  match field name value with Some (Praxo_core.Array items) -> items | _ -> fail ("missing array " ^ name)
+
+let path_set paths = List.sort_uniq compare paths
+
+let test_json () =
+  let node = Praxo_core.parse_json "{\"a\":[true,false,null,{\"b\":\"x\"}],\"n\":1.5}" in
+  check (Praxo_core.encode_json node <> "") "encode";
+  check (match Praxo_core.parse_json "\"\\u00e9\\ud83d\\ude00\"" with
+    | Praxo_core.String value -> String.length value = 6
+    | _ -> false) "unicode";
+  (try ignore (Praxo_core.parse_json ""); fail "empty accepted" with Praxo_core.Json_error _ -> ());
+  (try ignore (Praxo_core.parse_json "{} {}"); fail "trailing accepted" with Praxo_core.Json_error _ -> ());
+  (try ignore (Praxo_core.parse_json (String.make 66 '[' ^ "0" ^ String.make 66 ']')); fail "depth accepted" with Praxo_core.Json_error _ -> ());
+  (try ignore (Praxo_core.parse_json (String.make 1048577 ' ')); fail "capacity accepted" with Praxo_core.Json_error _ -> ());
+  let left = Praxo_core.Object [("x", Praxo_core.Number 1.); ("x", Praxo_core.Number 2.)] in
+  let right = Praxo_core.Object [("x", Praxo_core.Number 2.); ("x", Praxo_core.Number 2.)] in
+  check (Praxo_core.json_equal left right = Praxo_core.json_equal right left) "duplicate-key equality symmetry";
+  check (Praxo_core.json_equal left right) "duplicate-key last value";
+  print_endline "test_json passed"
+
+let test_toolcall root =
+  let document = Praxo_core.parse_json (read_file (Filename.concat root "vectors/toolcall.json")) in
+  let vectors = array_field "vectors" document in
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let content = string_field "content" input in
+    let operation = string_field "operation" input in
+    if operation = "strip" then
+      let stripped = Praxo_core.strip_tool_call_markup content in check (stripped = string_field "text" expect) ("strip vector: " ^ stripped)
+    else begin
+      match Praxo_core.parse_tool_call content with
+      | None -> check (field "nil" expect = Some (Praxo_core.Bool true)) "expected no call"
+      | Some call ->
+          check (field "nil" expect <> Some (Praxo_core.Bool true)) "unexpected call";
+          check (call.Praxo_core.name = string_field "name" expect) "call name";
+          check (Praxo_core.json_equal call.Praxo_core.input (match field "input" expect with Some value -> value | None -> fail "expected input")) "call input"
+    end) vectors;
+  (match Praxo_core.parse_tool_call "<a.one>{}</a.one><b.two>{bad}</b.two>" with None -> () | Some _ -> fail "invalid final block");
+  (match Praxo_core.parse_tool_call "{\"name\":\"x\",\"input\":{},\"risk\":42}" with None -> () | Some _ -> fail "typed metadata");
+  check (Praxo_core.strip_tool_call_markup "x.y {}" = "x.y {}") "strip preserves plain";
+  (match Praxo_core.parse_tool_call "echo {}" with None -> () | Some _ -> fail "plain dotted");
+  check (Praxo_core.strip_tool_call_markup "a<tool_call name=\"x\">unfinished" = "a") "unfinished block";
+  print_endline "test_toolcall passed"
+
+let test_schema root =
+  let document = Praxo_core.parse_json (read_file (Filename.concat root "vectors/jsonschema.json")) in
+  let vectors = array_field "vectors" document in
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let schema = match field "schema" input with Some value -> value | None -> fail "schema" in
+    let data = match field "data" input with Some value -> value | None -> fail "data" in
+    let paths = Praxo_core.validate_schema schema data in
+    let valid = bool_field "valid" expect in
+    check ((paths = []) = valid) "schema validity";
+    if not valid then
+      let expected = array_field "errorPaths" expect in
+      let expected = List.map (function Praxo_core.String value -> value | _ -> fail "path") expected in
+      check (path_set paths = path_set expected) "schema paths") vectors;
+  let schema = Praxo_core.parse_json "{\"type\":\"string\",\"pattern\":\"^a+$\"}" in
+  let data = Praxo_core.parse_json "\"a\\n\"" in
+  check (Praxo_core.validate_schema schema data = ["$"]) "pattern newline";
+  (try ignore (Praxo_core.validate_schema (Praxo_core.parse_json "{\"pattern\":\"(a)\"}") (Praxo_core.parse_json "\"a\"")); fail "unsupported pattern accepted" with Praxo_core.Schema_error _ -> ());
+  print_endline "test_schema passed"
+
+let test_manifest root =
+  let document = Praxo_core.parse_json (read_file (Filename.concat root "vectors/plugin.json")) in
+  let vectors = array_field "vectors" document in
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let raw = match field "raw" input with
+      | Some (Praxo_core.String value) -> value
+      | _ -> Praxo_core.encode_json (match field "manifest" input with Some value -> value | None -> fail "manifest")
+    in
+    match Praxo_core.validate_manifest raw with
+    | None -> check (not (bool_field "valid" expect)) "unexpected invalid manifest"
+    | Some manifest ->
+        check (bool_field "valid" expect) "unexpected valid manifest";
+        (match field "id" expect with Some (Praxo_core.String id) -> check (string_field "id" manifest = id) "manifest id" | _ -> ());
+        (match field "kind" expect with Some (Praxo_core.String kind) -> check (string_field "kind" manifest = kind) "manifest kind" | _ -> ())) vectors;
+  check (Praxo_core.validate_manifest "{} {}" = None) "trailing manifest";
+  check (Praxo_core.validate_manifest "" = None) "empty manifest";
+  print_endline "test_manifest passed"
+
+let bool_or name value fallback = match field name value with Some (Praxo_core.Bool flag) -> flag | _ -> fallback
+
+let int_field name value =
+  match field name value with Some (Praxo_core.Number number) -> int_of_float number | _ -> fail ("missing int " ^ name)
+
+let string_list_field name value =
+  List.map (function Praxo_core.String text -> text | _ -> fail ("missing string in " ^ name)) (array_field name value)
+
+let group root name =
+  let document = Praxo_core.parse_json (read_file (Filename.concat root ("vectors/" ^ name ^ ".json"))) in
+  array_field "vectors" document
+
+let check_code expected thunk =
+  try ignore (thunk ()); check (expected = "") ("expected error " ^ expected)
+  with Praxo_core.Core_error (code, _) -> check (code = expected) ("error code " ^ code)
+
+let test_memory root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let store = Praxo_core.memory_store () in
+    List.iter (fun put ->
+      let session = string_field "session" put in
+      let record = match field "record" put with Some value -> value | None -> fail "record" in
+      ignore (Praxo_core.memory_put store session (Praxo_core.memory_record_make
+        (string_field "id" record) (string_field "frame" record) (string_field "content" record)
+        (match field "createdAt" record with Some (Praxo_core.String value) -> Some value | _ -> None)))) (array_field "puts" input);
+    let records = Praxo_core.memory_search store (string_field "session" input) (string_field "query" input) (int_field "limit" input) in
+    let ids = if records = [] then Praxo_core.Null else Praxo_core.Array (List.map (fun item -> Praxo_core.String item.Praxo_core.record_id) records) in
+    let contents = if records = [] then Praxo_core.Null else Praxo_core.Array (List.map (fun item -> Praxo_core.String item.Praxo_core.record_content) records) in
+    let expected_ids = match field "ids" expect with Some value -> value | None -> Praxo_core.Null in
+    let expected_contents = match field "contents" expect with Some value -> value | None -> Praxo_core.Null in
+    check (Praxo_core.json_equal ids expected_ids) "memory ids";
+    check (Praxo_core.json_equal contents expected_contents) "memory contents") (group root "memory");
+  print_endline "test_memory passed"
+
+let test_event root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let events = List.map (fun kind -> Praxo_core.event_make kind "s1" None Praxo_core.Null) (string_list_field "events" input) in
+    if string_field "sink" input = "multi" then begin
+      let count = max 1 (int_field "sinkCount" input) in
+      let sinks = List.init count (fun _ ->
+        let types : string list ref = ref [] in
+        ((fun event -> types := event.Praxo_core.event_type :: !types), types)) in
+      let multi = Praxo_core.multi_sink (List.map fst sinks) in
+      List.iter multi events;
+      let per_sink = List.map (fun (_, types) -> Praxo_core.Array (List.map (fun item -> Praxo_core.String item) (List.rev !types))) sinks in
+      let expected = match field "perSink" expect with Some value -> value | None -> Praxo_core.Null in
+      check (Praxo_core.json_equal (Praxo_core.Array per_sink) expected) "perSink"
+    end else begin
+      let delivered : string list ref = ref [] in
+      let sink event = delivered := event.Praxo_core.event_type :: !delivered in
+      let predicate = match field "predicateTypes" input with Some _ -> string_list_field "predicateTypes" input | None -> [] in
+      let filtered = Praxo_core.filter_sink sink predicate in
+      List.iter filtered events;
+      let output = if !delivered = [] then Praxo_core.Null else Praxo_core.Array (List.map (fun item -> Praxo_core.String item) (List.rev !delivered)) in
+      let expected = match field "delivered" expect with Some value -> value | None -> Praxo_core.Null in
+      check (Praxo_core.json_equal output expected) "delivered"
+    end) (group root "event");
+  print_endline "test_event passed"
+
+let test_stream root =
+  let kinds = Praxo_core.Array (List.map (fun kind -> Praxo_core.String kind) Praxo_core.stream_kinds) in
+  List.iter (fun vector ->
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    check (Praxo_core.json_equal kinds (match field "kinds" expect with Some value -> value | None -> Praxo_core.Null)) "stream kinds") (group root "stream");
+  print_endline "test_stream passed"
+
+let test_checkpoint root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let allow = Praxo_core.checkpoint_allowlist () in
+    let registered = match field "registered" input with Some (Praxo_core.Array values) -> values | _ -> [] in
+    List.iter (function Praxo_core.String kind -> Praxo_core.checkpoint_register allow kind | _ -> fail "registered") registered;
+    let operation = match field "operation" input with Some (Praxo_core.String value) -> value | _ -> "roundtrip" in
+    let event_type = string_field "type" input in
+    let value = match field "value" input with Some value -> value | None -> Praxo_core.Null in
+    if operation = "roundtrip" then begin
+      let data = Praxo_core.checkpoint_marshal allow event_type value in
+      let decoded = Praxo_core.checkpoint_unmarshal allow data in
+      let expected = match field "value" expect with Some value -> value | None -> Praxo_core.Null in
+      check (Praxo_core.json_equal decoded expected) "checkpoint value"
+    end else begin
+      let expected = match field "errorCode" expect with Some (Praxo_core.String value) -> value | _ -> "" in
+      check_code expected (fun () ->
+        if operation = "marshal" then ignore (Praxo_core.checkpoint_marshal allow event_type value)
+        else ignore (Praxo_core.checkpoint_unmarshal allow (Praxo_core.encode_json (Praxo_core.Object [("type", Praxo_core.String event_type); ("data", value)]))))
+    end) (group root "checkpoint");
+  print_endline "test_checkpoint passed"
+
+let test_policy root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let grants = List.map (fun item -> Praxo_core.path_grant_make (string_field "root" item)
+      (match field "access" item with Some (Praxo_core.String value) -> value | _ -> "read")) (array_field "grants" input) in
+    let target = string_field "target" input and need = string_field "need" input in
+    if bool_or "error" expect false then
+      check_code "POLICY_ERROR" (fun () -> ignore (Praxo_core.path_check (Praxo_core.path_checker grants) target need))
+    else
+      let decision = Praxo_core.path_check (Praxo_core.path_checker grants) target need in
+      check (decision.Praxo_core.decision_allowed = bool_field "allowed" expect) "policy allowed") (group root "policy");
+  let checker = Praxo_core.path_checker [Praxo_core.path_grant_make "allowed" "read"] in
+  List.iter (fun target ->
+    check (not (Praxo_core.path_allowed checker target "read")) ("relative escape " ^ target))
+    ["../allowed/secret"; "../../allowed/secret"; "x/../../allowed/secret";
+     "..\\allowed\\secret"];
+  check (Praxo_core.path_allowed checker "other/../allowed/secret" "read") "relative normalization";
+  let parent_checker = Praxo_core.path_checker [Praxo_core.path_grant_make "../allowed" "read"] in
+  check (Praxo_core.path_allowed parent_checker "../allowed/secret" "read") "relative parent grant";
+  check (not (Praxo_core.path_allowed parent_checker "allowed/secret" "read")) "relative parent grant isolation";
+  let absolute_checker = Praxo_core.path_checker [Praxo_core.path_grant_make "/allowed" "read"] in
+  check (Praxo_core.path_allowed absolute_checker "/../../allowed/secret" "read") "absolute parent normalization";
+  let root_checker = Praxo_core.path_checker [Praxo_core.path_grant_make "/" "read"] in
+  check (Praxo_core.path_allowed root_checker "/etc/hosts" "read") "filesystem root grant";
+  let current_checker = Praxo_core.path_checker [Praxo_core.path_grant_make "." "read"] in
+  check (Praxo_core.path_allowed current_checker "local/file" "read") "current directory grant";
+  check (not (Praxo_core.path_allowed current_checker "../outside" "read")) "current directory escape";
+  print_endline "test_policy passed"
+
+let test_context root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let messages = List.map (fun item -> Praxo_core.text_message (string_field "role" item)
+      (match field "content" item with Some (Praxo_core.String value) -> value | _ -> "")) (array_field "messages" input) in
+    if string_field "operation" input = "estimate" then
+      check (Praxo_core.estimate_tokens messages = int_field "tokens" expect) "context tokens"
+    else begin
+      let budget_value = match field "budget" input with Some value -> value | None -> Praxo_core.Object [] in
+      let budget = Praxo_core.context_budget_make (int_field "maxTokens" budget_value) (int_field "keepRecent" budget_value) in
+      let output, ok = Praxo_core.compact_context budget messages in
+      check (ok = bool_field "ok" expect) "context ok";
+      if ok then begin
+        check (Praxo_core.estimate_tokens output = int_field "tokens" expect) "context tokens";
+        let wire = Praxo_core.Array (List.map Praxo_core.message_wire output) in
+        let expected = match field "messages" expect with Some value -> value | None -> Praxo_core.Null in
+        check (Praxo_core.json_equal wire expected) "context messages"
+      end
+    end) (group root "context");
+  print_endline "test_context passed"
+
+let test_middleware root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    match string_field "operation" input with
+    | "pii" -> check (Praxo_core.pii_redact (string_field "text" input) = string_field "text" expect) "pii"
+    | "pii-value" -> check (Praxo_core.json_equal (Praxo_core.redact_value (match field "value" input with Some value -> value | None -> Praxo_core.Null))
+        (match field "value" expect with Some value -> value | None -> Praxo_core.Null)) "pii value"
+    | "structured" ->
+        let schema = match field "schema" input with Some value -> value | None -> Praxo_core.Object [] in
+        let repair = match field "repairOutput" input with Some (Praxo_core.String value) -> Some (fun _ -> value) | _ -> None in
+        let output, code = Praxo_core.structured_apply (Praxo_core.structured_output schema (int_field "maxRepairs" input) repair) (string_field "output" input) in
+        if bool_field "ok" expect then
+          check (output <> None && Option.get output = string_field "output" expect) "structured output"
+        else check (code = string_field "errorCode" expect) "structured code"
+    | "call-limit" ->
+        let limit = Praxo_core.call_limit (int_field "modelLimit" input) (int_field "toolLimit" input) in
+        let outcomes = List.map (fun kind ->
+          try (if kind = "model" then Praxo_core.call_limit_model limit else Praxo_core.call_limit_tool limit); "ok"
+          with Praxo_core.Core_error (code, _) -> code) (string_list_field "calls" input) in
+        let expected = match field "outcomes" expect with Some value -> value | None -> Praxo_core.Null in
+        check (Praxo_core.json_equal (Praxo_core.Array (List.map (fun item -> Praxo_core.String item) outcomes)) expected) "call limit"
+    | "tool-selection" ->
+        let selection = Praxo_core.tool_selection (string_list_field "selected" input) in
+        let tools = List.map (fun name -> Praxo_core.tool_spec_make name "") (string_list_field "tools" input) in
+        let advertised = List.map (fun item -> Praxo_core.String item.Praxo_core.spec_name) (Praxo_core.select_tools selection tools) in
+        let expected = match field "advertised" expect with Some value -> value | None -> Praxo_core.Null in
+        check (Praxo_core.json_equal (Praxo_core.Array advertised) expected) "advertised";
+        let reject = try Praxo_core.check_tool_selected selection (string_field "requested" input); "ok" with Praxo_core.Core_error (code, _) -> code in
+        check (reject = string_field "reject" expect) "tool selection reject"
+    | "fallback" ->
+        let content = string_field "fallbackContent" input in
+        let model = Praxo_core.fallback_model (Praxo_core.failing_model ()) (Praxo_core.static_model content) in
+        let response = model.Praxo_core.generate (Praxo_core.request_make [] []) in
+        check (response.Praxo_core.response_message.Praxo_core.message_content = content) "fallback output"
+    | _ -> fail "unknown middleware operation") (group root "middleware");
+  print_endline "test_middleware passed"
+
+let test_agent_loop root =
+  List.iter (fun vector ->
+    let input = match field "input" vector with Some value -> value | None -> fail "input" in
+    let expect = match field "expect" vector with Some value -> value | None -> fail "expect" in
+    let invocations = ref 0 in
+    let tools = List.map (fun item -> Praxo_core.tool_make (string_field "name" item)
+      (match field "description" item with Some (Praxo_core.String value) -> value | _ -> "")
+      (fun arguments -> incr invocations; arguments)) (match field "tools" input with Some (Praxo_core.Array values) -> values | _ -> []) in
+    let script = List.map (fun item ->
+      let calls = List.map (fun call -> Praxo_core.tool_invocation_make (string_field "id" call)
+        (string_field "name" call) (match field "arguments" call with Some value -> value | None -> Praxo_core.Object []))
+        (match field "toolCalls" item with Some (Praxo_core.Array values) -> values | _ -> []) in
+      Praxo_core.response_make (Praxo_core.assistant_message
+        (match field "content" item with Some (Praxo_core.String value) -> value | _ -> "") calls)
+        (Praxo_core.usage_make (match field "inputTokens" item with Some (Praxo_core.Number value) -> int_of_float value | _ -> 0)
+                          (match field "outputTokens" item with Some (Praxo_core.Number value) -> int_of_float value | _ -> 0)))
+      (array_field "script" input) in
+    let event_types : string list ref = ref [] in
+    let options = { (Praxo_core.agent_options (Praxo_core.scripted_model script)) with
+      Praxo_core.agent_tools = tools;
+      agent_events = Some (fun event -> event_types := event.Praxo_core.event_type :: !event_types);
+      agent_max_steps = (match field "maxSteps" input with Some (Praxo_core.Number value) -> int_of_float value | _ -> 0);
+      agent_max_tokens = (match field "maxTokens" input with Some (Praxo_core.Number value) -> int_of_float value | _ -> 0) } in
+    let session_id = "s1" in
+    let session = Praxo_core.session_make session_id [] in
+    let prompt = match field "prompt" input with Some (Praxo_core.String value) -> value | _ -> "" in
+    if bool_or "error" expect false then
+      (try ignore (Praxo_core.run_agent options session prompt); fail "unexpected success"
+       with Praxo_core.Core_error (code, _) ->
+         (match field "errorCode" expect with Some (Praxo_core.String expected) -> check (code = expected) "agent error code" | _ -> ()))
+    else begin
+      let result = Praxo_core.run_agent options session prompt in
+      check (result.Praxo_core.result_output = string_field "output" expect) "agent output";
+      check (result.Praxo_core.result_steps = int_field "steps" expect) "agent steps"
+    end;
+    check (!invocations = int_field "toolInvocations" expect) "agent invocations";
+    let events = if !event_types = [] then Praxo_core.Null else Praxo_core.Array (List.map (fun item -> Praxo_core.String item) (List.rev !event_types)) in
+    let expected = match field "events" expect with Some value -> value | None -> Praxo_core.Null in
+    check (Praxo_core.json_equal events expected) "agent events") (group root "agent-loop");
+  print_endline "test_agent_loop passed"
+
+let test_agent_failures () =
+  Printexc.record_backtrace true;
+  let run_case source fail_failure_sink =
+    let original = Failure ("failure from " ^ source) in
+    let origin = ref "" in
+    let throw () =
+      try raise original with error ->
+        let trace = Printexc.get_raw_backtrace () in
+        origin := Printexc.raw_backtrace_to_string trace;
+        Printexc.raise_with_backtrace error trace
+    in
+    let events = ref [] in
+    let failure_data = ref Praxo_core.Null in
+    let model = if source = "model" then { Praxo_core.generate = (fun _ -> throw ()); generate_stream = None }
+      else if source = "tool" || source = "tool.call" then
+        Praxo_core.scripted_model [Praxo_core.response_make
+          (Praxo_core.assistant_message "" [Praxo_core.tool_invocation_make "1" "test" Praxo_core.Null])
+          (Praxo_core.usage_make 0 0)]
+      else Praxo_core.static_model "ok" in
+    let options = { (Praxo_core.agent_options model) with
+      Praxo_core.agent_tools = [Praxo_core.tool_make "test" "" (fun _ -> if source = "tool" then throw () else Praxo_core.Null)];
+      agent_events = Some (fun event ->
+        events := !events @ [event.Praxo_core.event_type];
+        if event.Praxo_core.event_type = "run.failed" then begin
+          failure_data := event.Praxo_core.event_data;
+          if fail_failure_sink then failwith "failure sink"
+        end;
+        if event.Praxo_core.event_type = source then throw ()) } in
+    (try ignore (Praxo_core.run_agent options (Praxo_core.session_make "s1" []) "hello");
+         fail "agent failure expected"
+     with error ->
+       let trace = Printexc.raw_backtrace_to_string (Printexc.get_raw_backtrace ()) in
+       check (error == original) (source ^ " original exception");
+       check (!origin <> "" && List.hd (String.split_on_char '\n' !origin) =
+         List.hd (String.split_on_char '\n' trace)) (source ^ " original backtrace"));
+    check (List.length (List.filter ((=) "run.failed") !events) = 1) (source ^ " failure event count");
+    check (!failure_data = Praxo_core.Object [("error", Praxo_core.String (Printexc.to_string original))])
+      (source ^ " failure event data");
+    check (List.hd (List.rev !events) = "run.failed") (source ^ " failure event order")
+  in
+  List.iter (fun source -> run_case source false; run_case source true)
+    ["model"; "tool"; "run.started"; "tool.call"; "run.completed"];
+  let original = Praxo_core.Core_error ("MODEL_ERROR", "model failed") in
+  let failure_data = ref Praxo_core.Null in
+  let model = { Praxo_core.generate = (fun _ -> raise original); generate_stream = None } in
+  let options = { (Praxo_core.agent_options model) with
+    Praxo_core.agent_events = Some (fun event ->
+      if event.Praxo_core.event_type = "run.failed" then begin
+        failure_data := event.Praxo_core.event_data;
+        failwith "failure sink"
+      end) } in
+  (try ignore (Praxo_core.run_agent options (Praxo_core.session_make "s1" []) "hello");
+       fail "core error expected"
+   with error -> check (error == original) "original core error");
+  check (!failure_data = Praxo_core.Object [("error", Praxo_core.String "model failed")])
+    "core error failure event data";
+  print_endline "test_agent_failures passed"
+
+let test_agent_middleware () =
+  let selected_calls = ref 0 in
+  let secret_calls = ref 0 in
+  let model = { Praxo_core.generate = (fun request ->
+    let names = List.map (fun spec -> spec.Praxo_core.spec_name) request.Praxo_core.request_tools in
+    check (names = ["echo"]) "agent selected specs";
+    if List.length request.Praxo_core.request_messages = 1 then
+      Praxo_core.response_make
+        (Praxo_core.assistant_message "" [Praxo_core.tool_invocation_make "c1" "echo" (Praxo_core.Object [])])
+        (Praxo_core.usage_make 0 0)
+    else
+      Praxo_core.response_make (Praxo_core.assistant_message "done" []) (Praxo_core.usage_make 0 0));
+    generate_stream = None;
+  } in
+  let options = { (Praxo_core.agent_options model) with
+    Praxo_core.agent_tools = [
+      Praxo_core.tool_make "echo" "Echo" (fun arguments -> incr selected_calls; arguments);
+      Praxo_core.tool_make "secret" "Secret" (fun arguments -> incr secret_calls; arguments)
+    ];
+    Praxo_core.agent_tool_selection = Some (Praxo_core.tool_selection ["echo"]);
+  } in
+  let result = Praxo_core.run_agent options (Praxo_core.session_make "s1" []) "use" in
+  check (result.Praxo_core.result_output = "done") "agent tool selection output";
+  check (!selected_calls = 1 && !secret_calls = 0) "agent tool selection calls";
+
+  let captured = ref [] in
+  let pii_model = { Praxo_core.generate = (fun request ->
+    captured := request :: !captured;
+    Praxo_core.response_make (Praxo_core.assistant_message "a@b.com" []) (Praxo_core.usage_make 0 0));
+    generate_stream = None;
+  } in
+  let history = { (Praxo_core.text_message "user" "a@b.com") with
+    Praxo_core.message_blocks = [Praxo_core.content_block_make "text" (Some "123-45-6789")] } in
+  let pii_options = { (Praxo_core.agent_options pii_model) with
+    Praxo_core.agent_pii = true;
+    Praxo_core.agent_system_prompt = "a@b.com";
+  } in
+  let pii_result = Praxo_core.run_agent pii_options (Praxo_core.session_make "s1" [history]) "a@b.com" in
+  check (pii_result.Praxo_core.result_output = "a@b.com") "pii output";
+  let request = List.hd !captured in
+  let contents = List.map (fun message -> message.Praxo_core.message_content) request.Praxo_core.request_messages in
+  check (contents = ["[REDACTED:email]"; "[REDACTED:email]"; "[REDACTED:email]"]) "pii request contents";
+  let blocks = (List.nth request.Praxo_core.request_messages 1).Praxo_core.message_blocks in
+  check (List.exists (fun block -> block.Praxo_core.block_text = Some "[REDACTED:ssn]") blocks) "pii block";
+
+  let schema = Praxo_core.Object [
+    ("type", Praxo_core.String "object");
+    ("required", Praxo_core.Array [Praxo_core.String "name"]);
+    ("properties", Praxo_core.Object [("name", Praxo_core.Object [("type", Praxo_core.String "string")])])
+  ] in
+  let config = Praxo_core.structured_output schema 1 (Some (fun _ -> "{\"name\":\"fixed\"}")) in
+  let structured_options = { (Praxo_core.agent_options (Praxo_core.static_model "bad")) with
+    Praxo_core.agent_structured_output = Some config } in
+  let structured_result = Praxo_core.run_agent structured_options (Praxo_core.session_make "s1" []) "x" in
+  check (structured_result.Praxo_core.result_output = "{\"name\":\"fixed\"}") "structured repaired output";
+
+  let limit_model = { Praxo_core.generate = (fun _ ->
+    Praxo_core.response_make
+      (Praxo_core.assistant_message "" [
+        Praxo_core.tool_invocation_make "1" "echo" (Praxo_core.Object []);
+        Praxo_core.tool_invocation_make "2" "echo" (Praxo_core.Object [])
+      ])
+      (Praxo_core.usage_make 0 0));
+    generate_stream = None;
+  } in
+  let tool_limit_options = { (Praxo_core.agent_options limit_model) with
+    Praxo_core.agent_tools = [Praxo_core.tool_make "echo" "Echo" (fun arguments -> arguments)];
+    Praxo_core.agent_call_limit = Some (Praxo_core.call_limit 0 1);
+  } in
+  let tool_code =
+    try ignore (Praxo_core.run_agent tool_limit_options (Praxo_core.session_make "s1" []) "x"); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (tool_code = "AGENT_TOOL_CALL_LIMIT") "tool call limit";
+
+  let model_limit_model = { Praxo_core.generate = (fun _ ->
+    Praxo_core.response_make
+      (Praxo_core.assistant_message "" [Praxo_core.tool_invocation_make "1" "echo" (Praxo_core.Object [])])
+      (Praxo_core.usage_make 0 0));
+    generate_stream = None;
+  } in
+  let model_limit_options = { (Praxo_core.agent_options model_limit_model) with
+    Praxo_core.agent_tools = [Praxo_core.tool_make "echo" "Echo" (fun arguments -> arguments)];
+    Praxo_core.agent_call_limit = Some (Praxo_core.call_limit 1 0);
+  } in
+  let model_code =
+    try ignore (Praxo_core.run_agent model_limit_options (Praxo_core.session_make "s1" []) "x"); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (model_code = "AGENT_MODEL_CALL_LIMIT") "model call limit";
+
+  let effects = ref 0 in
+  let preflight_model = { Praxo_core.generate = (fun _ ->
+    Praxo_core.response_make
+      (Praxo_core.assistant_message "" [
+        Praxo_core.tool_invocation_make "1" "echo" (Praxo_core.Object []);
+        Praxo_core.tool_invocation_make "2" "forbidden" (Praxo_core.Object [])
+      ])
+      (Praxo_core.usage_make 0 0));
+    generate_stream = None;
+  } in
+  let preflight_options = { (Praxo_core.agent_options preflight_model) with
+    Praxo_core.agent_tools = [
+      Praxo_core.tool_make "echo" "Echo" (fun arguments -> incr effects; arguments);
+      Praxo_core.tool_make "forbidden" "Forbidden" (fun arguments -> incr effects; arguments)
+    ];
+    Praxo_core.agent_allowed_tools = ["echo"];
+  } in
+  let preflight_code =
+    try ignore (Praxo_core.run_agent preflight_options (Praxo_core.session_make "s1" []) "x"); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (preflight_code = "AGENT_TOOL_NOT_ALLOWED") "agent preflight error";
+  check (!effects = 0) "agent preflight prevents partial effects";
+  print_endline "test_agent_middleware passed"
+
+let test_agent_hitl () =
+  let visibility arguments =
+    match field "visibility" arguments with
+    | Some (Praxo_core.String value) -> value
+    | _ -> ""
+  in
+  let allow_public actions action =
+    actions := !actions @
+      [(action.Praxo_core.action_kind, action.action_tool_name,
+        visibility action.action_arguments)];
+    if action.action_kind = "model.generate" then Praxo_core.decision_make true ""
+    else if action.action_kind = "tool.invoke" then
+      if action.action_tool_name = "write_note" &&
+         visibility action.action_arguments = "public" then
+        Praxo_core.decision_make true "only public notes are permitted"
+      else Praxo_core.decision_make false "only public notes are permitted"
+    else Praxo_core.decision_make false "unsupported action"
+  in
+  let run ?(echo_tool = false) ?decision ?approval
+      ?(interrupt_on = ["write_note"]) () =
+    let effects = ref 0 in
+    let actions = ref [] in
+    let model = { Praxo_core.generate = (fun request ->
+      match List.rev request.Praxo_core.request_messages with
+      | message :: _ when message.Praxo_core.message_role = "tool" ->
+          let output = if echo_tool then message.Praxo_core.message_content else "done" in
+          Praxo_core.response_make (Praxo_core.assistant_message output [])
+            (Praxo_core.usage_make 0 0)
+      | _ ->
+          Praxo_core.response_make
+            (Praxo_core.assistant_message ""
+               [Praxo_core.tool_invocation_make "write-note-1" "write_note"
+                  (Praxo_core.Object [
+                    ("text", Praxo_core.String "hello");
+                    ("visibility", Praxo_core.String "public")])])
+            (Praxo_core.usage_make 0 0));
+      generate_stream = None;
+    } in
+    let tool = Praxo_core.tool_make "write_note"
+      "Write a short note with the requested visibility."
+      (fun _ -> incr effects; Praxo_core.String "written") in
+    let events = ref [] in
+    let options = { (Praxo_core.agent_options model) with
+      Praxo_core.agent_tools = [tool];
+      agent_allowed_tools = ["write_note"];
+      agent_action_policy = Some (allow_public actions);
+      agent_interrupt_on = interrupt_on;
+      agent_on_interrupt_decision = decision;
+      agent_on_interrupt = approval;
+      agent_max_steps = 3;
+      agent_events = Some (fun event -> events := !events @ [event.Praxo_core.event_type]) } in
+    let outcome =
+      try Ok (Praxo_core.run_agent options (Praxo_core.session_make "hitl" []) "Write a note.")
+      with Praxo_core.Core_error (code, message) -> Error (code, message)
+    in
+    (outcome, !effects, !actions, !events)
+  in
+  let seen = ref None in
+  let outcome, effects, _, events = run ~decision:(fun interrupt ->
+      seen := Some (interrupt.Praxo_core.interrupt_run_id,
+        interrupt.interrupt_session_id,
+        interrupt.interrupt_call.Praxo_core.invocation_name,
+        visibility interrupt.interrupt_call.Praxo_core.invocation_arguments);
+      Praxo_core.interrupt_decision_make Praxo_core.interrupt_approve) () in
+  (match outcome with
+   | Ok result -> check (result.Praxo_core.result_output = "done") "hitl approve output"
+   | Error (code, _) -> fail ("hitl approve failed: " ^ code));
+  check (effects = 1) "hitl approve effects";
+  check (match !seen with
+    | Some (run_id, session_id, name, value) ->
+        run_id <> "" && session_id = "hitl" && name = "write_note" && value = "public"
+    | None -> false) "hitl interrupt payload";
+  check (events = ["run.started"; "tool.interrupt"; "tool.call"; "run.completed"])
+    "hitl approve events";
+
+  let outcome, effects, actions, _ = run ~decision:(fun _ ->
+      Praxo_core.interrupt_decision_make
+        ~arguments:(Praxo_core.Object [
+          ("text", Praxo_core.String "hello");
+          ("visibility", Praxo_core.String "private")])
+        Praxo_core.interrupt_edit) () in
+  (match outcome with
+   | Error ("AGENT_POLICY_DENIED", _) -> ()
+   | _ -> fail "hitl edit should be denied by reauthorization");
+  check (effects = 0) "hitl edit effects";
+  let tool_actions = List.filter (fun (kind, name, _) ->
+    kind = "tool.invoke" && name = "write_note") actions in
+  check (List.length tool_actions = 2) "hitl edit reauthorization count";
+  (match List.nth tool_actions 0 with
+   | (_, _, value) -> check (value = "public") "hitl edit initial authorization");
+  (match List.nth tool_actions 1 with
+   | (_, _, value) -> check (value = "private") "hitl edit reauthorization");
+
+  let outcome, effects, _, _ = run ~decision:(fun _ ->
+      Praxo_core.interrupt_decision_make ~reason:"denied by reviewer"
+        Praxo_core.interrupt_reject) () in
+  (match outcome with
+   | Error ("AGENT_APPROVAL_DENIED", message) ->
+       check (Praxo_core.ends_with "denied by reviewer" message) "hitl reject reason"
+   | _ -> fail "hitl reject code");
+  check (effects = 0) "hitl reject effects";
+
+  let outcome, effects, _, _ = run ~echo_tool:true ~decision:(fun _ ->
+      Praxo_core.interrupt_decision_make ~response:"cached"
+        Praxo_core.interrupt_respond) () in
+  (match outcome with
+   | Ok result -> check (result.Praxo_core.result_output = "\"cached\"") "hitl respond output"
+   | Error (code, _) -> fail ("hitl respond failed: " ^ code));
+  check (effects = 0) "hitl respond effects";
+
+  let outcome, effects, _, events = run () in
+  (match outcome with
+   | Error ("AGENT_INTERRUPT_UNHANDLED", _) -> ()
+   | _ -> fail "hitl unhandled code");
+  check (effects = 0) "hitl unhandled effects";
+  check (not (List.mem "tool.interrupt" events)) "hitl unhandled event";
+
+  let invalid code decision =
+    let outcome, effects, _, _ = run ~decision () in
+    (match outcome with
+     | Error (actual, _) -> check (actual = code) ("hitl " ^ code)
+     | _ -> fail ("hitl " ^ code ^ " missing"));
+    check (effects = 0) ("hitl " ^ code ^ " effects")
+  in
+  invalid "AGENT_INTERRUPT_DECISION_INVALID" (fun _ ->
+    Praxo_core.interrupt_decision_make "bogus");
+  invalid "AGENT_INTERRUPT_DECISION_INVALID" (fun _ ->
+    Praxo_core.interrupt_decision_make Praxo_core.interrupt_edit);
+
+  let outcome, effects, _, _ = run ~approval:(fun _ -> false) () in
+  (match outcome with
+   | Error ("AGENT_APPROVAL_DENIED", _) -> ()
+   | _ -> fail "hitl approval denied code");
+  check (effects = 0) "hitl approval denied effects";
+  let outcome, effects, _, _ = run ~approval:(fun _ -> true) () in
+  (match outcome with
+   | Ok result -> check (result.Praxo_core.result_output = "done") "hitl approval output"
+   | Error (code, _) -> fail ("hitl approval failed: " ^ code));
+  check (effects = 1) "hitl approval effects";
+  print_endline "test_agent_hitl passed"
+
+let test_agent_safe_defaults () =
+  let model = Praxo_core.static_model "ok" in
+  let expect_code expected thunk =
+    try ignore (thunk ()); fail "expected error"
+    with Praxo_core.Core_error (code, _) ->
+      check (code = expected) ("expected " ^ expected)
+  in
+  expect_code "AGENT_INVALID_OPTIONS" (fun () ->
+    ignore (Praxo_core.run_agent
+      { (Praxo_core.agent_options model) with Praxo_core.agent_require_policy = true }
+      (Praxo_core.session_make "s1" []) "hello"));
+  let allowed_policy = { (Praxo_core.agent_options model) with
+    Praxo_core.agent_policy = Some (fun _ -> true);
+    Praxo_core.agent_require_policy = true } in
+  let result = Praxo_core.run_agent allowed_policy (Praxo_core.session_make "s1" []) "hello" in
+  check (result.Praxo_core.result_output = "ok") "require policy accepted";
+  expect_code "AGENT_INVALID_OPTIONS" (fun () ->
+    ignore (Praxo_core.run_agent
+      { (Praxo_core.agent_options model) with Praxo_core.agent_require_tool_scope = true }
+      (Praxo_core.session_make "s1" []) "hello"));
+  let scoped = { (Praxo_core.agent_options model) with
+    Praxo_core.agent_allowed_tools = ["echo"];
+    Praxo_core.agent_require_tool_scope = true } in
+  let scoped_result = Praxo_core.run_agent scoped (Praxo_core.session_make "s1" []) "hello" in
+  check (scoped_result.Praxo_core.result_output = "ok") "require tool scope accepted";
+  let defaults = Praxo_core.agent_options model in
+  check (not defaults.Praxo_core.agent_require_policy) "default require policy";
+  check (not defaults.Praxo_core.agent_require_tool_scope) "default require tool scope";
+  let default_result = Praxo_core.run_agent defaults (Praxo_core.session_make "s1" []) "hello" in
+  check (default_result.Praxo_core.result_output = "ok") "defaults preserve behavior";
+  print_endline "test_agent_safe_defaults passed"
+
+let test_mcp () =
+  let calls = ref [] in
+  let transport method_name params =
+    calls := (method_name, params) :: !calls;
+    match method_name with
+    | "initialize" ->
+        Praxo_core.Object [
+          ("protocolVersion", Praxo_core.String "2024-11-05");
+          ("serverInfo", Praxo_core.Object [("name", Praxo_core.String "fake")]);
+        ]
+    | "tools/list" ->
+        (match field "cursor" params with
+         | Some (Praxo_core.String "c1") ->
+             Praxo_core.Object [
+               ("tools", Praxo_core.Array [
+                 Praxo_core.Object [("name", Praxo_core.String "two")];
+               ]);
+             ]
+         | _ ->
+             Praxo_core.Object [
+               ("tools", Praxo_core.Array [
+                 Praxo_core.Object [("name", Praxo_core.String "echo")];
+               ]);
+               ("nextCursor", Praxo_core.String "c1");
+             ])
+    | "tools/call" ->
+        Praxo_core.Object [
+          ("content", Praxo_core.Array [
+            Praxo_core.Object [
+              ("type", Praxo_core.String "text");
+              ("text", Praxo_core.String "ok");
+            ];
+          ]);
+        ]
+    | _ -> Praxo_core.Object []
+  in
+  let client = Praxo_core.mcp_client transport in
+  check (client.Praxo_core.mcp_protocol_version = "2024-11-05") "mcp protocol version";
+  check (List.mem_assoc "notifications/initialized" !calls) "mcp initialized notification";
+  let tools = Praxo_core.mcp_list_tools client in
+  check (List.length tools = 2) "mcp pagination";
+  check (List.exists (fun tool ->
+    match field "name" tool with
+    | Some (Praxo_core.String "echo") -> true
+    | _ -> false) tools) "mcp tool echo";
+  let value = Praxo_core.mcp_call_tool client "echo" (Praxo_core.Object []) in
+  check (match value with Praxo_core.String "ok" -> true | _ -> false) "mcp call text";
+  Praxo_core.mcp_close client;
+  check client.Praxo_core.mcp_closed "mcp closed";
+  let closed_code =
+    try ignore (Praxo_core.mcp_list_tools client); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (closed_code = "MCP_CLOSED") "mcp closed guard";
+
+  let duplicate_transport method_name _ =
+    match method_name with
+    | "initialize" -> Praxo_core.Object [("protocolVersion", Praxo_core.String "2024-11-05")]
+    | "tools/list" ->
+        Praxo_core.Object [("tools", Praxo_core.Array [
+          Praxo_core.Object [("name", Praxo_core.String "echo")];
+          Praxo_core.Object [("name", Praxo_core.String "echo")];
+        ])]
+    | _ -> Praxo_core.Object []
+  in
+  let duplicate = Praxo_core.mcp_client duplicate_transport in
+  let duplicate_code =
+    try ignore (Praxo_core.mcp_list_tools duplicate); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (duplicate_code = "MCP_DUPLICATE_TOOL") "mcp duplicate tool";
+
+  let cursor_transport method_name _ =
+    match method_name with
+    | "initialize" -> Praxo_core.Object [("protocolVersion", Praxo_core.String "2024-11-05")]
+    | "tools/list" ->
+        Praxo_core.Object [
+          ("tools", Praxo_core.Array []);
+          ("nextCursor", Praxo_core.String "c1");
+        ]
+    | _ -> Praxo_core.Object []
+  in
+  let cursor_client = Praxo_core.mcp_client cursor_transport in
+  let cursor_code =
+    try ignore (Praxo_core.mcp_list_tools cursor_client); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (cursor_code = "MCP_PAGINATION") "mcp repeated cursor";
+
+  let failing_transport method_name _ =
+    match method_name with
+    | "initialize" -> Praxo_core.Object [("protocolVersion", Praxo_core.String "2024-11-05")]
+    | "tools/call" -> Praxo_core.Object [("isError", Praxo_core.Bool true)]
+    | _ -> Praxo_core.Object []
+  in
+  let failing = Praxo_core.mcp_client failing_transport in
+  let failing_code =
+    try ignore (Praxo_core.mcp_call_tool failing "echo" (Praxo_core.Object [])); ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (failing_code = "MCP_TOOL_ERROR") "mcp tool error";
+  print_endline "test_mcp passed"
+
+let test_seams () =
+  let captured = ref "" in
+  let transport method_name _url _content_type body =
+    if method_name <> "POST" then fail "otel method";
+    captured := body;
+    (200, "")
+  in
+  let sink = Praxo_core.otel_sink_new "https://otel.example/v1/traces"
+      transport (fun () -> 1794294000000000000) in
+  let sink = { sink with Praxo_core.otel_allowed_data_keys = ["name"] } in
+  let event = Praxo_core.event_make "tool.call" "s1" (Some "run-123")
+      (Praxo_core.Object [
+        ("name", Praxo_core.String "echo");
+        ("secret", Praxo_core.String "hidden");
+      ]) in
+  Praxo_core.otel_emit sink event;
+  let payload = Praxo_core.parse_json !captured in
+  let resource_span = List.hd (array_field "resourceSpans" payload) in
+  let scope_span = List.hd (array_field "scopeSpans" resource_span) in
+  let span = List.hd (array_field "spans" scope_span) in
+  check (string_field "name" span = "praxo.tool.call") "otel span name";
+  check (String.length (string_field "traceId" span) = 32) "otel trace id";
+  check (String.length (string_field "spanId" span) = 16) "otel span id";
+  let attributes = array_field "attributes" span in
+  let has_key key =
+    List.exists (fun attribute ->
+      match field "key" attribute with
+      | Some (Praxo_core.String name) -> name = key
+      | _ -> false) attributes
+  in
+  check (has_key "praxo.event.data.name") "otel allowed data";
+  check (not (has_key "praxo.event.data.secret")) "otel excluded data";
+
+  let failing_sink = Praxo_core.otel_sink_new "https://otel.example"
+      (fun _ _ _ _ -> (500, "boom")) (fun () -> 1) in
+  let otel_error =
+    try Praxo_core.otel_emit failing_sink event; ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (otel_error = "OTEL_HTTP") "otel failure code";
+
+  let documents = Praxo_core.retrieve_documents
+      (fun query limit -> [{
+         Praxo_core.document_id = "doc-1";
+         document_content = query ^ ":" ^ string_of_int limit;
+         document_metadata = [("source", "fixture")];
+         document_score = 0.5;
+       }]) "hello" 3
+  in
+  check (List.length documents = 1) "retriever count";
+  check ((List.hd documents).Praxo_core.document_content = "hello:3")
+    "retriever query";
+
+  let request = {
+    Praxo_core.request_parent_session_id = "parent";
+    request_agent_id = "child";
+    request_prompt = "look up";
+    request_mode = "fork";
+  } in
+  let task = Praxo_core.subagent_run (fun _ -> {
+      Praxo_core.result_task_id = "task-1";
+      result_agent_id = "child";
+      result_output = "done";
+    }) request
+  in
+  check (task.Praxo_core.task_status = "completed") "delegate completed";
+  check (task.Praxo_core.task_output = "done") "delegate output";
+  check (task.Praxo_core.task_mode = "fork") "delegate mode";
+
+  let failed = Praxo_core.subagent_run
+      (fun _ -> raise (Praxo_core.Core_error ("BOOM", "boom"))) request
+  in
+  check (failed.Praxo_core.task_status = "failed") "delegate failure status";
+  check (failed.Praxo_core.task_error = "BOOM") "delegate failure code";
+
+  let failed_generic = Praxo_core.subagent_run
+      (fun _ -> failwith "runner exploded") request
+  in
+  check (failed_generic.Praxo_core.task_status = "failed") "delegate generic failure status";
+  check (Praxo_core.starts_with "Failure(\"runner exploded\")"
+    failed_generic.Praxo_core.task_error) "delegate generic failure error";
+
+  let invalid = { request with request_agent_id = "" } in
+  let invalid_code =
+    try
+      ignore (Praxo_core.subagent_run (fun _ -> {
+        Praxo_core.result_task_id = "";
+        result_agent_id = "";
+        result_output = "";
+      }) invalid);
+      ""
+    with Praxo_core.Core_error (code, _) -> code
+  in
+  check (invalid_code = "SUBAGENT_INVALID") "delegate invalid";
+  print_endline "test_seams passed"
+
+let () =
+  let root = if Array.length Sys.argv > 1 then Sys.argv.(1) else "../../spec" in
+  test_json ();
+  test_toolcall root;
+  test_schema root;
+  test_manifest root;
+  test_memory root;
+  test_event root;
+  test_stream root;
+  test_checkpoint root;
+  test_policy root;
+  test_context root;
+  test_middleware root;
+  test_agent_loop root;
+  test_agent_middleware ();
+  test_agent_failures ();
+  test_agent_hitl ();
+  test_agent_safe_defaults ();
+  test_mcp ();
+  test_seams ();
+  Praxo_adapter_tests.test_openai_adapter ();
+  Praxo_adapter_tests.test_anthropic_adapter ();
+  Praxo_adapter_tests.test_gemini_adapter ();
+  Praxo_adapter_tests.test_plugin_process ();
+  Praxo_adapter_tests.test_harmovela ();
+  print_endline "OCaml Core tests passed"

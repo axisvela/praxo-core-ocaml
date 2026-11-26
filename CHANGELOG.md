@@ -1,5 +1,33 @@
 # OCaml Core Release Notes
 
+## 0.11.0 - 2026-11-26
+
+Source tag `ocaml/v0.11.0`.
+
+- Fixed multi-tool authorization to preflight every call before any effect.
+- Fixed Gemini function-response names, provider text content blocks, plugin
+  stderr draining and startup cleanup, MCP initialization/closed guards,
+  subagent failure capture, root path grants, and duplicate-key JSON equality.
+- Split the Core into responsibility modules under 500 lines each while
+  preserving the public `Praxo_core` module.
+
+## 0.10.0 - 2026-11-26
+
+Source tag `ocaml/v0.10.0`.
+
+- Minor release for AI-native reference applications, scenario tutorials, and the Go examples layout refresh.
+
+## 0.9.0 - 2026-11-20
+
+Source tag `ocaml/v0.9.0`.
+
+### Added
+
+- Deterministic representative-chain example covering MCP, final-argument
+  authorization, governed child delegation, OTel/Harmovela events, and an edited
+  denial with zero effects.
+- Advanced-delegation example plus six application-level governance checks.
+
 ## 0.8.0 - 2026-11-15
 
 Source tag `ocaml/v0.8.0`.
